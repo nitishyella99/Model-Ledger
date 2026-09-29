@@ -6,7 +6,7 @@ ModelLedger is a Next.js application for evaluating AI model changes before they
 
 Vercel app link: [https://model-ledger-sigma.vercel.app/](https://model-ledger-sigma.vercel.app/)
 
-How to use the app: Video link coming soon.
+How to use the app: [https://youtu.be/iE3JqI9ffJc](https://youtu.be/iE3JqI9ffJc)
 
 ## Features
 
@@ -124,6 +124,14 @@ scripts             Local validation and test scripts
 4. Run an evaluation against a selected version.
 5. Review pass rates, failures, regressions, latency, token usage, and cost.
 6. Compare versions and use recommendations to decide what to fix next.
+
+## How to Create a Report
+
+1. Create a project for the AI application or model workflow you want to test.
+2. Create versions for that project so each prompt, provider, or configuration change is tracked separately.
+3. Import test cases into each version. These tests define the expected behavior that ModelLedger will evaluate.
+4. Run an evaluation for the selected project and version.
+5. Open the generated report to review pass rates, failures, regressions, latency, token usage, and recommendations.
 
 ## Security Notes
 
