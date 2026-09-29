@@ -133,6 +133,4 @@ scripts             Local validation and test scripts
 3. Run `npm run lint`, `npm run type-check`, and `npm test`.
 4. Open a pull request with a clear summary and verification notes.
 
-## License
 
-No license has been published yet. Add a license before distributing or accepting external contributions.
