@@ -2,6 +2,12 @@
 
 ModelLedger is a Next.js application for evaluating AI model changes before they reach users. It helps teams register model projects, version prompts and configurations, import test cases, run automated evaluations, compare model versions, and inspect regressions with Supabase-backed reports.
 
+## Try the App
+
+Vercel app link: [https://model-ledger-sigma.vercel.app/](https://model-ledger-sigma.vercel.app/)
+
+How to use the app: Video link coming soon.
+
 ## Features
 
 - Project and model registry for tracking AI applications.
