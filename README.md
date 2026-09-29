@@ -8,6 +8,30 @@ Vercel app link: [https://model-ledger-sigma.vercel.app/](https://model-ledger-s
 
 How to use the app: [https://youtu.be/iE3JqI9ffJc](https://youtu.be/iE3JqI9ffJc)
 
+Sample CSV files for testing: [Download ZIP from Google Drive](https://drive.google.com/file/d/1mDzv6pnQpN2T8f_uxmTLkShvqJ68-e7M/view?usp=drive_link)
+
+The ZIP contains sample `V1`, `V2`, and `V3` CSV files that judges can use to test the full ModelLedger workflow without preparing their own data.
+
+## Judge Demo Checklist
+
+Follow every step in order. ModelLedger depends on the relationship between a project, its versions, and the test cases uploaded for each version. If a project, version, or CSV upload step is skipped, the evaluation cannot produce a meaningful report and the app may look like it failed.
+
+1. Open the live app: [https://model-ledger-sigma.vercel.app/](https://model-ledger-sigma.vercel.app/)
+2. Download the sample ZIP file: [ModelLedger sample CSV files](https://drive.google.com/file/d/1mDzv6pnQpN2T8f_uxmTLkShvqJ68-e7M/view?usp=drive_link)
+3. Create a new project from the Projects page.
+4. Go to the Versions tab and create three versions for that project:
+   - `v1`
+   - `v2`
+   - `v3`
+5. Open each version and import the matching CSV file:
+   - Upload the `V1` CSV into version `v1`
+   - Upload the `V2` CSV into version `v2`
+   - Upload the `V3` CSV into version `v3`
+6. Confirm that test cases are visible after each CSV import.
+7. Run an evaluation for the project/version you want to inspect.
+8. Open the generated report from the Reports page to review pass rates, failures, regressions, latency, token usage, and recommendations.
+9. Use the Compare page to compare versions and see how behavior changed across `v1`, `v2`, and `v3`.
+
 ## Features
 
 - Project and model registry for tracking AI applications.
@@ -128,10 +152,13 @@ scripts             Local validation and test scripts
 ## How to Create a Report
 
 1. Create a project for the AI application or model workflow you want to test.
-2. Create versions for that project so each prompt, provider, or configuration change is tracked separately.
-3. Import test cases into each version. These tests define the expected behavior that ModelLedger will evaluate.
-4. Run an evaluation for the selected project and version.
-5. Open the generated report to review pass rates, failures, regressions, latency, token usage, and recommendations.
+2. Create one or more versions for that project from the Versions tab.
+3. Open each version and upload/import its test cases. For the provided judge demo data, create `v1`, `v2`, and `v3`, then upload the matching `V1`, `V2`, and `V3` CSV files into those versions.
+4. Check that the imported test cases are visible before running an evaluation.
+5. Run an evaluation for the selected project and version.
+6. Open the generated report to review pass rates, failures, regressions, latency, token usage, and recommendations.
+
+Important: a report needs all required setup data. Create the project first, create the versions second, upload test cases third, and run evaluation last.
 
 ## Security Notes
 
