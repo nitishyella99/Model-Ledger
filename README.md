@@ -12,7 +12,7 @@ Sample CSV files for testing: [Download ZIP from Google Drive](https://drive.goo
 
 The ZIP contains sample `V1`, `V2`, and `V3` CSV files that judges can use to test the full ModelLedger workflow without preparing their own data.
 
-## Testing The Qpp
+## Testing The App
 
 Follow every step in order. ModelLedger depends on the relationship between a project, its versions, and the test cases uploaded for each version. If a project, version, or CSV upload step is skipped, the evaluation cannot produce a meaningful report and the app may look like it failed.
 
