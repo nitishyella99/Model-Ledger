@@ -1,5 +1,9 @@
 "use server";
 
+import { requireUserId } from "@/lib/auth";
+import { enqueueVersionEvaluation, guidedEnabled } from "@/lib/deployment/service";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
@@ -64,6 +68,7 @@ export type RunEvaluationActionState = {
   status: "idle" | "success" | "error";
   message?: string;
   createdEvaluationId?: string;
+  queuedProjectId?: string;
   fieldErrors?: Partial<
     Record<keyof z.infer<typeof evaluationFormSchema>, string>
   >;
@@ -86,6 +91,7 @@ export async function submitEvaluationAction(
   _previousState: RunEvaluationActionState,
   formData: FormData,
 ): Promise<RunEvaluationActionState> {
+  await requireUserId();
   const parsed = evaluationFormSchema.safeParse({
     modelId: getStringValue(formData, "modelId"),
     modelVersionId: getStringValue(formData, "modelVersionId"),
@@ -230,7 +236,7 @@ export async function submitEvaluationAction(
       }),
     );
 
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     revalidatePath("/memory");
     revalidatePath("/models");
     revalidatePath("/versions");
@@ -259,6 +265,7 @@ export async function submitAutomaticEvaluationAction(
   _previousState: RunEvaluationActionState,
   formData: FormData,
 ): Promise<RunEvaluationActionState> {
+  await requireUserId();
   const reportType = getStringValue(formData, "reportType");
   const parsed = automaticEvaluationSchema.safeParse({
     modelId: getStringValue(formData, "modelId"),
@@ -278,6 +285,11 @@ export async function submitAutomaticEvaluationAction(
 
   try {
     if (parsed.data.reportType === "all_project_reports") {
+      if(guidedEnabled()) {
+        const client=await createSupabaseServerClient();
+        const {data}=await client.from("model_onboarding").select("id").eq("model_id",parsed.data.modelId).limit(1);
+        if(data?.length)return {status:"error",message:"Open the project and evaluate its configured version. Add version and compare runs the baseline and updated model together."};
+      }
       const versions = await getVersionsByModelId(parsed.data.modelId);
       if (versions.length === 0) {
         return {
@@ -321,7 +333,7 @@ export async function submitAutomaticEvaluationAction(
         };
       }
 
-      revalidatePath("/");
+      revalidatePath("/dashboard");
       revalidatePath("/memory");
       revalidatePath("/models");
       revalidatePath("/versions");
@@ -355,13 +367,18 @@ export async function submitAutomaticEvaluationAction(
       };
     }
 
+    const queued = await enqueueVersionEvaluation(parsed.data.modelId, parsed.data.modelVersionId, parsed.data.testCaseIds);
+    if(queued) {
+      revalidatePath(`/projects/${parsed.data.modelId}`);
+      return {status:"success",queuedProjectId:parsed.data.modelId,message:"Your evaluation is running in the background. Open your project to follow saved progress."};
+    }
     const run = await runConfiguredEvaluationSuite({
       modelId: parsed.data.modelId,
       modelVersionId: parsed.data.modelVersionId,
       testCaseIds: parsed.data.testCaseIds,
     });
 
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     revalidatePath("/memory");
     revalidatePath("/models");
     revalidatePath("/versions");

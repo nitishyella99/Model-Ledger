@@ -34,34 +34,14 @@ type RunEvaluationDialogProps = Readonly<{
 
 const reportTypes = [
   {
-    value: "run",
-    label: "Run report",
-    description: "Outputs, scores, telemetry, and evaluator evidence for one run.",
-  },
-  {
-    value: "version",
-    label: "Version report",
-    description: "Latest run facts grouped around the selected version.",
-  },
-  {
-    value: "comparison",
-    label: "Comparison report",
-    description: "Version-to-version changes, score movement, and transitions.",
-  },
-  {
-    value: "regression",
-    label: "Regression investigation",
-    description: "Failures, repeated failures, regressions, and historical context.",
-  },
-  {
     value: "complete",
-    label: "Complete report",
-    description: "Generate and store the full evidence set in Reports.",
+    label: "Selected version report",
+    description: "Run the selected version against its test cases and save the report.",
   },
   {
     value: "all_project_reports",
-    label: "All Project Reports (Batch All Versions)",
-    description: "Generates reports for all versions of this project, including comparison reports and overall project summary.",
+    label: "All versions for this project",
+    description: "Run every version in order and update the project reports.",
   },
 ] as const;
 
@@ -78,7 +58,7 @@ export function RunEvaluationDialog({
   initialState,
   projects,
   initialProjectId,
-  label = "Run Evaluation",
+  label = "Generate Report",
   variant = "primary",
 }: RunEvaluationDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -179,8 +159,8 @@ export function RunEvaluationDialog({
                   Run evaluation
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-stone-600">
-                  Choose the project, version, and report type. The generated
-                  report is stored in Reports.
+                  Choose a project and version. The generated report is stored
+                  in Reports.
                 </p>
               </div>
               <button
@@ -232,7 +212,7 @@ export function RunEvaluationDialog({
                 </select>
               </label>
               <label className="grid gap-2 text-sm md:col-span-2">
-                <span className="font-semibold text-stone-950">Report type</span>
+                  <span className="font-semibold text-stone-950">Report scope</span>
                 <select
                   value={reportType}
                   onChange={(event) =>
@@ -294,6 +274,7 @@ export function RunEvaluationDialog({
                   ].join(" ")}
                 >
                   <p>{state.message}</p>
+                  {state.queuedProjectId && <Link href={`/projects/${state.queuedProjectId}`} className="mt-2 inline-flex font-semibold underline">Follow evaluation progress</Link>}
                   {state.createdEvaluationId ? (
                     <Link
                       href={`/reports/${state.createdEvaluationId}`}
@@ -307,10 +288,41 @@ export function RunEvaluationDialog({
               ) : null}
 
               {!canRun ? (
-                <p className="mt-4 text-sm leading-6 text-amber-800">
-                  This project needs at least one configured version and one
-                  imported test before it can run from this dialog.
-                </p>
+                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="font-medium">
+                    This project needs at least one configured version and one
+                    imported test before it can run from this dialog.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedProject &&
+                    (!selectedVersion ||
+                      !selectedVersion.configured ||
+                      selectedProject.versions.length === 0) ? (
+                      <Link
+                        href={
+                          selectedVersion
+                            ? `/versions/${selectedVersion.id}`
+                            : `/versions?project=${selectedProject.id}`
+                        }
+                        onClick={() => setIsOpen(false)}
+                        className="inline-flex h-8 items-center justify-center rounded-md bg-stone-950 px-3 text-xs font-semibold text-white transition-colors hover:bg-stone-800"
+                      >
+                        Configure version
+                      </Link>
+                    ) : null}
+                    {selectedProject &&
+                    (selectedProject.testCases.length === 0 ||
+                      selectedVersionTests.length === 0) ? (
+                      <Link
+                        href={`/projects/${selectedProject.id}/tests`}
+                        onClick={() => setIsOpen(false)}
+                        className="inline-flex h-8 items-center justify-center rounded-md border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-50"
+                      >
+                        Import tests
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
 
               <div className="mt-4 flex justify-end">

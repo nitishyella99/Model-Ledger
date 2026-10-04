@@ -1,9 +1,13 @@
 "use server";
 
+import { requireUserId } from "@/lib/auth";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
+  getTestCasesByIds,
   parseAndValidateTestCasesCsv,
+  updateTestCase,
   toTestCaseInsert,
   upsertTestCases,
 } from "@/lib/data/test-cases";
@@ -33,6 +37,12 @@ export type TestCaseActionState = Readonly<{
   status: "idle" | "success" | "error";
   message?: string;
   importedCount?: number;
+}>;
+
+export type EditTestCasesActionState = Readonly<{
+  status: "idle" | "success" | "error";
+  message?: string;
+  updatedCount?: number;
 }>;
 
 function getStringValue(formData: FormData, key: string) {
@@ -68,6 +78,7 @@ export async function createTestCaseAction(
   _previousState: TestCaseActionState,
   formData: FormData,
 ): Promise<TestCaseActionState> {
+  await requireUserId();
   const rawModelVersionId = getStringValue(formData, "modelVersionId");
   const parsed = testCaseSchema.safeParse({
     modelId: getStringValue(formData, "modelId"),
@@ -126,6 +137,7 @@ export async function importTestCasesCsvAction(
   _previousState: TestCaseActionState,
   formData: FormData,
 ): Promise<TestCaseActionState> {
+  await requireUserId();
   let csv = "";
 
   try {
@@ -193,4 +205,141 @@ export async function importTestCasesCsvAction(
     message: `${parsedCsv.rows.length} test cases imported.`,
     importedCount: parsedCsv.rows.length,
   };
+}
+
+const editableEvaluatorTypes = ["exact_match", "contains", "llm_judge"] as const;
+const editableSeverities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
+
+function getStringValues(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .filter((value): value is string => typeof value === "string");
+}
+
+export async function updateTestCasesAction(
+  _previousState: EditTestCasesActionState,
+  formData: FormData,
+): Promise<EditTestCasesActionState> {
+  await requireUserId();
+  const modelId = getStringValue(formData, "modelId");
+  const modelVersionId = getStringValue(formData, "modelVersionId");
+  const ids = getStringValues(formData, "testCaseId");
+  const names = getStringValues(formData, "name");
+  const categories = getStringValues(formData, "category");
+  const inputs = getStringValues(formData, "input");
+  const expectedOutputs = getStringValues(formData, "expectedOutput");
+  const evaluatorTypes = getStringValues(formData, "evaluatorType");
+  const thresholds = getStringValues(formData, "threshold");
+  const severities = getStringValues(formData, "severity");
+  const tags = getStringValues(formData, "tags");
+
+  if (!modelId || !modelVersionId) {
+    return {
+      status: "error",
+      message: "Select a project and version before saving test cases.",
+    };
+  }
+
+  if (ids.length === 0) {
+    return {
+      status: "error",
+      message: "There are no test cases to save for this version.",
+    };
+  }
+
+  try {
+    const version = await getVersionById(modelVersionId);
+
+    if (!version || version.model_id !== modelId) {
+      return {
+        status: "error",
+        message: "Select a version that belongs to this project.",
+      };
+    }
+
+    const existingCases = await getTestCasesByIds(ids);
+
+    if (
+      existingCases.length !== ids.length ||
+      existingCases.some((testCase) => testCase.model_id !== modelId)
+    ) {
+      return {
+        status: "error",
+        message: "One or more selected test cases do not belong to this project.",
+      };
+    }
+
+    await Promise.all(
+      ids.map((id, index) => {
+        const threshold = Number(thresholds[index] ?? "1");
+        const evaluatorType = evaluatorTypes[index];
+        const severity = severities[index];
+
+        if (!names[index]?.trim() || !categories[index]?.trim()) {
+          throw new Error("Each test case needs a name and suite.");
+        }
+
+        if (!inputs[index]?.trim() || !expectedOutputs[index]?.trim()) {
+          throw new Error("Each test case needs input and expected output.");
+        }
+
+        if (
+          !editableEvaluatorTypes.includes(
+            evaluatorType as (typeof editableEvaluatorTypes)[number],
+          )
+        ) {
+          throw new Error("Select a valid evaluator type.");
+        }
+
+        if (
+          !editableSeverities.includes(
+            severity as (typeof editableSeverities)[number],
+          )
+        ) {
+          throw new Error("Select a valid severity.");
+        }
+
+        if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
+          throw new Error("Threshold must be between 0 and 1.");
+        }
+
+        return updateTestCase(id, {
+          model_id: modelId,
+          model_version_id: modelVersionId,
+          name: names[index].trim(),
+          category: categories[index].trim(),
+          input: inputs[index].trim(),
+          expected_output: expectedOutputs[index].trim(),
+          evaluator_type: evaluatorType as (typeof editableEvaluatorTypes)[number],
+          threshold,
+          severity: severity as (typeof editableSeverities)[number],
+          tags: (tags[index] ?? "")
+            .split(/[|,;]/)
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+          updated_at: new Date().toISOString(),
+        });
+      }),
+    );
+
+    revalidatePath("/tests");
+    revalidatePath("/tests/edit");
+    revalidatePath(`/projects/${modelId}`);
+    revalidatePath(`/projects/${modelId}/tests`);
+    revalidatePath("/run-evaluation");
+
+    return {
+      status: "success",
+      message: `${ids.length} test case${ids.length === 1 ? "" : "s"} saved.`,
+      updatedCount: ids.length,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Test cases could not be saved.",
+    };
+  }
 }

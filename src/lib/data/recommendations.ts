@@ -11,7 +11,7 @@ export type CreateEvaluationRecommendationInput =
 export async function getRecommendationsByEvaluationId(
   evaluationId: string,
 ): Promise<EvaluationRecommendationRow[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluation_recommendations")
     .select("*")
@@ -32,7 +32,7 @@ export async function createEvaluationRecommendations(
     return [];
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluation_recommendations")
     .insert(inputs)

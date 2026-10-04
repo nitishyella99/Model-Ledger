@@ -1,3 +1,4 @@
+import { requireOwnedModel } from "@/lib/data/models";
 import "server-only";
 
 import {
@@ -36,6 +37,7 @@ import type {
 export async function retainEvaluationOutcome(
   context: EvaluationMemoryContext,
 ) {
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getEvaluationOutcomeEventId(context.fact.id),
@@ -53,6 +55,7 @@ export async function retainEvaluationFailure(
     return null;
   }
 
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getEvaluationFailureEventId(context.fact.id),
@@ -68,6 +71,7 @@ export async function retainRegression(context: RegressionMemoryContext) {
     return null;
   }
 
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getRegressionEventId(context.fact.id),
@@ -83,6 +87,7 @@ export async function retainResolution(context: ResolutionMemoryContext) {
     return null;
   }
 
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getResolutionEventId(context.fact.id),
@@ -98,6 +103,7 @@ export async function retainImprovement(context: ResolutionMemoryContext) {
     return null;
   }
 
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getImprovementEventId(context.fact.id),
@@ -113,6 +119,7 @@ export async function retainFixRemediation(context: ResolutionMemoryContext) {
     return null;
   }
 
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getFixRemediationEventId(context.fact.id),
@@ -133,6 +140,7 @@ export async function retainEvaluatorNote(
     return null;
   }
 
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getEvaluatorNoteEventId(context.fact.id),
@@ -167,6 +175,7 @@ export async function retainEvaluationResultMemories(
 export async function retainVersionChange(
   context: VersionChangeMemoryContext,
 ) {
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getVersionChangeEventId(context.change.id),
@@ -184,6 +193,7 @@ export async function retainVersionApprovalDecision(
     return null;
   }
 
+  await requireOwnedModel(context.modelId);
   return retainMemoryWithClient(getHindsightClient(), {
     modelId: context.modelId,
     eventId: getVersionApprovalEventId(context.modelVersionId),

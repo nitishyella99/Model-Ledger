@@ -32,7 +32,7 @@ export function Sidebar({
     <aside className="hidden min-h-[100dvh] w-60 shrink-0 border-r border-stone-200 bg-stone-100/80 lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:flex-col">
       <div className="flex h-16 items-center border-b border-stone-200 px-5">
         <Link
-          href="/"
+          href="/dashboard"
           className="flex items-center gap-3 text-sm font-semibold tracking-tight text-stone-950"
           aria-label="ModelLedger overview"
         >
@@ -76,7 +76,7 @@ export function Sidebar({
         </div>
 
         <div className="mt-auto border-t border-stone-200 pt-4">
-          {secondaryNavigationItems.map((item) => {
+          {secondaryNavigationItems.filter((item) => item.href !== "/profile").map((item) => {
             const active = isRouteActive(pathname, item);
             const Icon = item.icon;
 

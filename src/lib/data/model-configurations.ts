@@ -41,7 +41,7 @@ export function getDefaultModelVersionConfiguration(
 export async function getModelVersionConfiguration(
   modelVersionId: string,
 ): Promise<ModelVersionConfigurationRow | null> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("model_version_configurations")
     .select("*")
@@ -67,7 +67,7 @@ export async function getEffectiveModelVersionConfiguration(
 export async function upsertModelVersionConfiguration(
   input: CreateModelVersionConfigurationInput,
 ): Promise<ModelVersionConfigurationRow> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("model_version_configurations")
     .upsert(input, { onConflict: "model_version_id" })
@@ -85,7 +85,7 @@ export async function updateModelVersionConfiguration(
   modelVersionId: string,
   input: UpdateModelVersionConfigurationInput,
 ): Promise<ModelVersionConfigurationRow> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("model_version_configurations")
     .update(input)

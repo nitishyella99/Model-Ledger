@@ -25,6 +25,11 @@ export type EvaluationResultInput = Readonly<{
   evaluation_id: string;
   test_name: string;
   test_key?: string | null;
+  input_snapshot?: string | null;
+  expected_output_snapshot?: string | null;
+  evaluation_criteria_snapshot?: unknown;
+  evaluator_type?: string | null;
+  threshold?: number | null;
   category: string | null;
   expected_result?: string | null;
   actual_result?: string | null;
@@ -46,6 +51,8 @@ export type VersionChangeInput = Readonly<{
 }>;
 
 export type EvaluationFact = Readonly<{
+  inputSnapshot?: string | null;
+  criteriaSnapshot?: string | null;
   id: string;
   evaluationId: string;
   modelVersionId: string;

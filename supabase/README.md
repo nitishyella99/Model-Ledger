@@ -1,31 +1,9 @@
 # ModelLedger Supabase Setup
 
-## Environment
+Configure Clerk as a native third-party authentication provider before using this app. See [Clerk setup and rollout](../docs/clerk-setup.md).
 
-Required local variables:
+Apply every migration in timestamp order. The final ownership migration removes all demo policies, denies anonymous access, and restricts each application table to the project owner. Legacy projects remain unassigned.
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-```
+If `20261002090000_clerk_project_ownership.sql` reports that `owner_user_id` already exists, use the updated migration in this repository and rerun the entire file. It reuses the existing text column, preserves assigned owners and project data, and safely replaces its policies, functions, and triggers. Do not delete the column or clear its values. An existing column with a different type requires inspection before migration; it is not converted automatically.
 
-Only the public anon key is used by the application. Do not add a Supabase
-service-role key to any `NEXT_PUBLIC_*` variable or browser-facing module.
-
-## Phase 2 Security Posture
-
-This hackathon MVP intentionally does not include authentication, users,
-organizations, or role-based access control. The RLS migration enables explicit
-demo policies that allow anonymous reads and MVP writes needed by the app:
-
-- create models
-- add model versions and version changes
-- submit evaluations and evaluation results
-- update a model's current version pointer
-
-Delete operations are not allowed by the demo policies.
-
-This is not production-secure. Before a public production deployment, replace
-the demo policies with authenticated, ownership-aware policies and move any
-privileged operations behind server-only code that uses appropriately protected
-credentials.
+The app uses NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY with Clerk session tokens. Never put a service-role key in browser-facing configuration.

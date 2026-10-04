@@ -19,6 +19,7 @@ import type { HindsightRecallMemory } from "../../src/lib/hindsight/types";
 const baseDate = Date.parse("2026-01-01T00:00:00.000Z");
 
 const model = {
+  owner_user_id: "user_test",
   id: "model-1",
   name: "Customer Support Agent",
   provider: "OpenAI",

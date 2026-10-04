@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getEvaluationDatasetByModelId } from "@/lib/data/evaluation-engine";
 import {
   getEvaluationById,
@@ -6,9 +7,12 @@ import {
 } from "@/lib/data/evaluations";
 import { getEffectiveModelVersionConfiguration } from "@/lib/data/model-configurations";
 import { getModelById } from "@/lib/data/models";
-import { getVersionById } from "@/lib/data/versions";
+import { getVersionById, getVersionChangesByVersionIds } from "@/lib/data/versions";
 import { buildRunReportData } from "@/lib/evaluation/report-data";
 import { buildStoredReportMemories } from "@/lib/hindsight/report-memory";
+import { buildEvidenceGroundedRecommendations } from "@/lib/evaluation/recommendations";
+import { buildDeterministicRunFindings } from "@/lib/ai/run-analysis";
+import { buildFailureRecurrences } from "@/lib/evaluation/recurrence";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +21,9 @@ type ExportRouteProps = Readonly<{
 }>;
 
 export async function GET(_request: Request, { params }: ExportRouteProps) {
+  if (!(await auth()).userId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
   const { id } = await params;
   const evaluation = await getEvaluationById(id);
 
@@ -24,12 +31,13 @@ export async function GET(_request: Request, { params }: ExportRouteProps) {
     return NextResponse.json({ error: "Report not found." }, { status: 404 });
   }
 
-  const [model, version, results, dataset, configuration] = await Promise.all([
+  const [model, version, results, dataset, configuration, versionChanges] = await Promise.all([
     getModelById(evaluation.model_id),
     getVersionById(evaluation.model_version_id),
     getEvaluationResultsByEvaluationIds([evaluation.id]),
     getEvaluationDatasetByModelId(evaluation.model_id),
     getEffectiveModelVersionConfiguration(evaluation.model_version_id).catch(() => null),
+    getVersionChangesByVersionIds([evaluation.model_version_id]),
   ]);
 
   const report = buildRunReportData({
@@ -43,6 +51,10 @@ export async function GET(_request: Request, { params }: ExportRouteProps) {
     report,
     modelName: model?.name,
   });
+  const [recurrenceResults, recurrenceChanges] = await Promise.all([
+    getEvaluationResultsByEvaluationIds([...new Set(dataset.facts.map((fact) => fact.evaluationId))]),
+    getVersionChangesByVersionIds(dataset.versions.map((entry) => entry.id)),
+  ]);
 
   return NextResponse.json(
     {
@@ -50,7 +62,10 @@ export async function GET(_request: Request, { params }: ExportRouteProps) {
       project: model,
       version,
       report,
-      memoryEvidence,
+      recurrences: buildFailureRecurrences({ dataset, evaluationId: id, results: recurrenceResults, versionChanges: recurrenceChanges }),
+      memoryEvidence: memoryEvidence.map((memory) => ({ ...memory, source: "stored_history" })),
+      findings: buildDeterministicRunFindings(report),
+      recommendations: buildEvidenceGroundedRecommendations({ report, memories: memoryEvidence, versionChanges }),
     },
     {
       headers: {

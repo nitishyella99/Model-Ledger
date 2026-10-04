@@ -43,11 +43,14 @@ export type ExecutionStatus =
 
 export type EvaluatorStatus = "SUCCESS" | "ERROR";
 
+import type { DeploymentTables } from "../lib/deployment/types";
+
 export type Database = {
   public: {
-    Tables: {
+    Tables: DeploymentTables & {
       models: {
         Row: {
+          owner_user_id: string | null;
           id: string;
           name: string;
           provider: string;
@@ -57,6 +60,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          owner_user_id?: string | null;
           id?: string;
           name: string;
           provider: string;
@@ -66,6 +70,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          owner_user_id?: string | null;
           id?: string;
           name?: string;
           provider?: string;
@@ -521,7 +526,13 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_guided_project: { Args: { p_key: string; p_name: string; p_purpose: string; p_version: string; p_settings: Json; p_tests: Json; p_project?: string }; Returns: string };
+      claim_model_job: { Args: { p_id: string; p_owner: string; p_lease: string }; Returns: Json };
+      finish_model_job: { Args: { p_id: string; p_lease: string; p_used: number }; Returns: undefined };
+      begin_model_upload: { Args: { p_id: string; p_owner: string }; Returns: undefined };
+      reserve_model_import: { Args: { p_id: string; p_owner: string; p_bytes: number; p_revision: string }; Returns: undefined };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

@@ -22,6 +22,12 @@ function compareDateStrings(a: string, b: string) {
   return a.localeCompare(b);
 }
 
+export function sameTestDefinition(a: EvaluationFact, b: EvaluationFact) {
+  // Old records lack snapshots: preserve their historical comparison behavior.
+  if (a.inputSnapshot == null || b.inputSnapshot == null) return true;
+  return a.inputSnapshot === b.inputSnapshot && a.expectedResult === b.expectedResult && a.criteriaSnapshot === b.criteriaSnapshot;
+}
+
 export function orderVersionsChronologically(
   versions: readonly VersionOrderInput[],
 ): VersionOrderInput[] {
@@ -92,6 +98,7 @@ export function detectRepeatedFailure(
   const previousFailures = orderFactsChronologically(history).filter(
     (fact) =>
       fact.testKey === current.testKey &&
+      sameTestDefinition(fact, current) &&
       fact.modelVersionId !== current.modelVersionId &&
       fact.result === "FAIL" &&
       compareDateStrings(fact.versionCreatedAt, current.versionCreatedAt) < 0,
@@ -118,7 +125,7 @@ export function detectResolvedIssue(
   }
 
   const orderedHistory = orderFactsChronologically(history).filter(
-    (fact) => fact.testKey === current.testKey,
+    (fact) => fact.testKey === current.testKey && sameTestDefinition(fact, current),
   );
   const currentIndex = orderedHistory.findIndex((fact) => fact.id === current.id);
   const earlierFacts =
@@ -186,6 +193,7 @@ export function detectRegression(
   const orderedEarlierFacts = orderFactsChronologically(history).filter(
     (fact) =>
       fact.testKey === current.testKey &&
+      sameTestDefinition(fact, current) &&
       fact.modelVersionId !== current.modelVersionId &&
       compareDateStrings(fact.versionCreatedAt, current.versionCreatedAt) < 0,
   );
@@ -241,7 +249,7 @@ export function classifyIssue(
   }
 
   const orderedHistory = orderFactsChronologically(history).filter(
-    (fact) => fact.testKey === current.testKey,
+    (fact) => fact.testKey === current.testKey && sameTestDefinition(fact, current),
   );
   const currentIndex = orderedHistory.findIndex((fact) => fact.id === current.id);
   const earlierFacts =
@@ -342,13 +350,15 @@ export function compareVersionResults(
     ...new Set([...fromFactsByTestKey.keys(), ...toFactsByTestKey.keys()]),
   ].sort();
   const transitions: TestTransition[] = allTestKeys.map((testKey) => {
-    const fromResult = fromFactsByTestKey.get(testKey) ?? null;
+    const originalFrom = fromFactsByTestKey.get(testKey) ?? null;
     const toResult = toFactsByTestKey.get(testKey) ?? null;
+    const changed = originalFrom && toResult && !sameTestDefinition(originalFrom, toResult);
+    const fromResult = changed ? null : originalFrom;
     const representative = toResult ?? fromResult;
 
     return {
       testKey,
-      testName: representative?.testName ?? testKey,
+      testName: `${representative?.testName ?? testKey}${changed ? " (changed test)" : ""}`,
       category: representative?.category ?? "Uncategorized",
       transition: getTransition(fromResult, toResult),
       fromResult,

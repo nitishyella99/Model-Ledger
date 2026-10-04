@@ -11,7 +11,7 @@ export type CreateEvaluationResultInput = TablesInsert<"evaluation_results">;
 export type UpdateEvaluationInput = TablesUpdate<"evaluations">;
 
 export async function getEvaluations(): Promise<EvaluationRow[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluations")
     .select("*")
@@ -27,7 +27,7 @@ export async function getEvaluations(): Promise<EvaluationRow[]> {
 export async function getEvaluationsByModelId(
   modelId: string,
 ): Promise<EvaluationRow[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluations")
     .select("*")
@@ -44,7 +44,7 @@ export async function getEvaluationsByModelId(
 export async function getEvaluationById(
   evaluationId: string,
 ): Promise<EvaluationRow | null> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluations")
     .select("*")
@@ -65,7 +65,7 @@ export async function getEvaluationResultsByEvaluationIds(
     return [];
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluation_results")
     .select("*")
@@ -88,7 +88,7 @@ export async function getEvaluationResultsByEvaluationId(
 export async function createEvaluation(
   input: CreateEvaluationInput,
 ): Promise<EvaluationRow> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluations")
     .insert(input)
@@ -109,7 +109,7 @@ export async function createEvaluationResults(
     return [];
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluation_results")
     .insert(inputs)
@@ -127,7 +127,7 @@ export async function updateEvaluation(
   evaluationId: string,
   input: UpdateEvaluationInput,
 ): Promise<EvaluationRow> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluations")
     .update(input)

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { latestOperation } from "@/lib/deployment/service";
+import { NextStep } from "@/components/projects/next-step";
 import { notFound } from "next/navigation";
 import { RunEvaluationDialog } from "@/components/evaluations/run-evaluation-dialog";
 import { ProjectTabs } from "@/components/projects/project-tabs";
@@ -94,6 +96,7 @@ export default async function ProjectOverviewPage({ params }: ProjectPageProps) 
     versions.find((version) => version.id === project.current_model_version_id) ??
     versions[0];
   const latestEvaluation = evaluations[0];
+  const operation = await latestOperation(id);
 
   if (!currentVersion) {
     return (
@@ -109,11 +112,11 @@ export default async function ProjectOverviewPage({ params }: ProjectPageProps) 
         </header>
         <EmptyState
           title="No versions yet"
-          description="A version is a particular version of your AI setup. Add one before ModelLedger can compare evaluation results."
+          description="A version is a particular version of your AI setup. Add and configure a version first before importing test cases or comparing evaluation results."
           action={{ href: `/versions?project=${project.id}`, label: "Add Version" }}
           secondaryAction={{
-            href: `/projects/${project.id}/tests`,
-            label: "Import Data",
+            href: `/versions?project=${project.id}`,
+            label: "Configure Version",
           }}
         />
       </div>
@@ -178,6 +181,7 @@ export default async function ProjectOverviewPage({ params }: ProjectPageProps) 
 
   return (
     <div className="space-y-6">
+      {operation && <NextStep initial={operation} key={`${operation.id}:${operation.updated_at}`} />}
       <header className="rounded-md border border-stone-200 bg-white">
         <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -195,12 +199,14 @@ export default async function ProjectOverviewPage({ params }: ProjectPageProps) 
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <RunEvaluationDialog
-              action={submitAutomaticEvaluationAction}
-              initialState={initialRunEvaluationActionState}
-              projects={runDialogProjects}
-              initialProjectId={project.id}
-            />
+            <Link href={`/model-upload?project=${project.id}&version=${currentVersion.id}`} className="inline-flex h-9 items-center justify-center rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 hover:bg-stone-50">Upload Model</Link>
+          <RunEvaluationDialog
+            action={submitAutomaticEvaluationAction}
+            initialState={initialRunEvaluationActionState}
+            projects={runDialogProjects}
+            initialProjectId={project.id}
+            label="Generate report"
+          />
             <Link
               href={`/versions?project=${project.id}`}
               className="inline-flex h-9 items-center justify-center rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50 active:translate-y-px"
@@ -211,13 +217,13 @@ export default async function ProjectOverviewPage({ params }: ProjectPageProps) 
               href="#compare"
               className="inline-flex h-9 items-center justify-center rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700"
             >
-              Compare Versions
+              Compare
             </Link>
             <Link
               href={`/projects/${project.id}/tests`}
               className="inline-flex h-9 items-center justify-center rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700"
             >
-              Import Test CSV
+              Import cases
             </Link>
           </div>
         </div>
@@ -227,8 +233,8 @@ export default async function ProjectOverviewPage({ params }: ProjectPageProps) 
       {currentSummary.metrics.total_tests === 0 ? (
         <EmptyState
           title="No evaluations yet"
-          description="Run your test suite once to create your first baseline. A run means testing many cases against one version."
-          action={{ href: "/run-evaluation", label: "Run Evaluation" }}
+          description="Generate one report to create the first baseline for this project."
+          action={{ href: "/run-evaluation", label: "Generate Report" }}
         />
       ) : (
         <>
@@ -400,7 +406,7 @@ export default async function ProjectOverviewPage({ params }: ProjectPageProps) 
           <section id="runs" className="rounded-md border border-stone-200 bg-white">
             <div className="border-b border-stone-200 p-4">
               <h2 className="text-sm font-semibold text-stone-950">
-                Recent Runs
+                Recent Reports
               </h2>
             </div>
             <div className="overflow-x-auto">

@@ -24,6 +24,7 @@ import type { HindsightRecallMemory } from "@/lib/hindsight/types";
 import type { Json } from "@/types/database";
 import { runAutomaticEvaluation } from "./orchestrator";
 import { createModelExecutor } from "./providers";
+import { safeModelFetch } from "@/lib/deployment/network";
 import type {
   CanonicalTestCase,
   ExecutableModelConfiguration,
@@ -150,6 +151,8 @@ async function persistRunRecommendations(
           (item) => item.startsWith("memory ") || item.includes(": memory"),
         ),
         generatedAction: recommendation.action,
+        verification: recommendation.verification,
+        affectedTestIds: recommendation.affectedTestIds,
       } as Json,
     })),
   );
@@ -216,6 +219,7 @@ export async function runConfiguredEvaluationSuite(input: RunSuiteInput) {
   const testCasesMap = new Map<string, typeof testCaseRows[number]>();
   for (const row of testCaseRows) {
     if (row.model_id !== input.modelId) continue;
+    if (row.model_version_id && row.model_version_id !== input.modelVersionId) continue;
     const key = row.stable_key || row.id;
     const existing = testCasesMap.get(key);
     if (!existing) {
@@ -239,7 +243,7 @@ export async function runConfiguredEvaluationSuite(input: RunSuiteInput) {
     name: input.name ?? `${model.name} ${version.version} automatic evaluation`,
     configuration: toExecutableConfiguration(configuration),
     testCases,
-    executor: createModelExecutor(configuration.provider),
+    executor: createModelExecutor(configuration.provider,{fetch:safeModelFetch as typeof fetch}),
     judge: {
       complete: completeLlmJudge,
     },

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM"],
     "module": "Node16",
     "moduleResolution": "Node16",
     "rootDir": "..",
@@ -13,22 +13,32 @@
     "noEmit": false
   },
   "include": [
+    "./auth/**/*.ts",
     "../src/lib/ai/analyze-evaluation.ts",
+    "../src/lib/ai/run-analysis.ts",
     "../src/lib/ai/prompts.ts",
     "../src/lib/ai/schemas.ts",
     "../src/lib/ai/types.ts",
+    "../src/lib/data/test-case-csv.ts",
     "../src/lib/evaluation/**/*.ts",
     "../src/lib/hindsight/formatter.ts",
     "../src/lib/hindsight/core.ts",
     "../src/lib/hindsight/types.ts",
+    "../src/lib/hindsight/report-recall.ts",
+    "../src/lib/test-case-generator/**/*.ts",
+    "../src/lib/deployment/types.ts",
+    "../src/lib/deployment/guidance.ts",
+    "../src/lib/deployment/validation.ts",
+    "../src/lib/deployment/network.ts",
+    "../src/lib/deployment/crypto.ts",
     "../src/types/database.ts",
     "./ai/**/*.ts",
     "./evaluation/**/*.ts",
-    "./hindsight/**/*.ts"
+    "./hindsight/**/*.ts",
+    "./test-case-generator/**/*.ts"
+    ,"./deployment/**/*.ts"
   ],
   "exclude": [
-    "../src/lib/evaluation/run-service.ts",
-    "../src/lib/evaluation/report-data.ts",
-    "../src/lib/evaluation/recommendations.ts"
+    "../src/lib/evaluation/run-service.ts"
   ]
 }

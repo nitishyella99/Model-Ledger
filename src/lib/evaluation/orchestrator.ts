@@ -15,6 +15,7 @@ import type {
 } from "./pipeline-types";
 
 export type EvaluationRunRepository = Readonly<{
+  findCheckpoint?: (testCaseId: string) => Promise<{ execution: ModelExecutionResult; evaluation: AutomaticEvaluationResult } | null>;
   createRun: (
     input: TablesInsert<"evaluations">,
   ) => Promise<{ id: string; evaluated_at: string }>;
@@ -28,6 +29,8 @@ export type EvaluationRunRepository = Readonly<{
 }>;
 
 export type RunAutomaticEvaluationInput = Readonly<{
+  beforeCase?: () => Promise<void>;
+  strictPersistence?: boolean;
   modelId: string;
   modelVersionId: string;
   name: string;
@@ -193,6 +196,9 @@ export async function runAutomaticEvaluation(
 
   for (let i = 0; i < input.testCases.length; i += 1) {
     const testCase = input.testCases[i];
+    await input.beforeCase?.();
+    const checkpoint = await input.repository.findCheckpoint?.(testCase.id);
+    if (checkpoint) { persisted.push(checkpoint); continue; }
     if (i > 0) {
       await sleep(1000);
     }
@@ -231,8 +237,8 @@ export async function runAutomaticEvaluation(
         result: automaticEvaluation.passed ? "PASS" : "FAIL",
         severity: automaticEvaluation.passed ? "LOW" : testCase.severity,
         evaluator_notes: safeTruncate(automaticEvaluation.reason, 2000),
-        input_snapshot: safeTruncate(testCase.input, 4000) ?? "",
-        expected_output_snapshot: safeTruncate(testCase.expectedOutput, 4000) ?? "",
+        input_snapshot: testCase.input,
+        expected_output_snapshot: testCase.expectedOutput,
         evaluation_criteria_snapshot: jsonOrNull(testCase.evaluationCriteria),
         evaluator_type: testCase.evaluatorType,
         threshold: testCase.threshold,
@@ -252,6 +258,7 @@ export async function runAutomaticEvaluation(
         evaluator_status: automaticEvaluation.status,
       });
     } catch (createErr) {
+      if (input.strictPersistence) throw createErr;
       console.error(`Failed to persist evaluation result for test "${testCase.name}":`, createErr);
     }
   }

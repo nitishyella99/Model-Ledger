@@ -129,7 +129,6 @@ function flattenAnalysisText(analysis: EvaluationAiAnalysis) {
 
 function hasUnsupportedCausalClaim(
   analysis: EvaluationAiAnalysis,
-  payload: EvaluationAnalysisPayload,
 ) {
   const text = flattenAnalysisText(analysis).toLowerCase();
   const strongCausalClaim =
@@ -141,11 +140,8 @@ function hasUnsupportedCausalClaim(
     return false;
   }
 
-  const suppliedEvidence = JSON.stringify(payload).toLowerCase();
-
-  return !/\b(confirmed root cause|confirmed cause|causality confirmed)\b/.test(
-    suppliedEvidence,
-  );
+  // Text in supplied outputs or memory cannot authorize a causal conclusion.
+  return true;
 }
 
 function contradictsRegressionAuthority(
@@ -169,7 +165,7 @@ function isGroundedAnalysis(
   payload: EvaluationAnalysisPayload,
 ) {
   return (
-    !hasUnsupportedCausalClaim(analysis, payload) &&
+    !hasUnsupportedCausalClaim(analysis) &&
     !contradictsRegressionAuthority(analysis, payload)
   );
 }

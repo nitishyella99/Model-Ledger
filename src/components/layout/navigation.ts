@@ -7,9 +7,11 @@ import {
   GitBranch,
   HelpCircle,
   LayoutDashboard,
-  PlayCircle,
   Settings,
+  Sparkles,
   UserCircle,
+  WandSparkles,
+  Upload,
 } from "lucide-react";
 
 export type NavigationItem = {
@@ -22,9 +24,9 @@ export type NavigationItem = {
 
 export const navigationItems: NavigationItem[] = [
   {
-    href: "/",
-    label: "Overview",
-    title: "Overview",
+    href: "/dashboard",
+    label: "Dashboard",
+    title: "Dashboard",
     icon: LayoutDashboard,
     exact: true,
   },
@@ -36,15 +38,9 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     href: "/tests",
-    label: "Tests",
-    title: "Tests",
+    label: "Test Cases",
+    title: "Test Cases",
     icon: ClipboardList,
-  },
-  {
-    href: "/runs",
-    label: "Runs",
-    title: "Runs",
-    icon: PlayCircle,
   },
   {
     href: "/reports",
@@ -74,6 +70,18 @@ export const navigationItems: NavigationItem[] = [
 
 export const secondaryNavigationItems: NavigationItem[] = [
   {
+    href: "/model-upload",
+    label: "Upload Model",
+    title: "Upload Model",
+    icon: Upload,
+  },
+  {
+    href: "/test-case-generator",
+    label: "Test Generator",
+    title: "Test Case Generator",
+    icon: Sparkles,
+  },
+  {
     href: "/settings",
     label: "Settings",
     title: "Settings",
@@ -95,9 +103,9 @@ export const secondaryNavigationItems: NavigationItem[] = [
 
 export const primaryAction: NavigationItem = {
   href: "/run-evaluation",
-  label: "Run Evaluation",
-  title: "Run Evaluation",
-  icon: PlayCircle,
+  label: "Generate Report",
+  title: "Generate Report",
+  icon: WandSparkles,
 };
 
 export function isRouteActive(pathname: string, item: NavigationItem) {
@@ -109,8 +117,13 @@ export function isRouteActive(pathname: string, item: NavigationItem) {
 }
 
 export function getPageTitle(pathname: string) {
+  if (pathname === "/projects/new") return "Model Setup";
   if (pathname === primaryAction.href) {
     return primaryAction.title;
+  }
+
+  if (pathname === "/attention") {
+    return "Things Needing Attention";
   }
 
   if (pathname.startsWith("/reports/") || pathname.startsWith("/evaluations/")) {

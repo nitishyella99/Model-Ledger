@@ -1,4 +1,6 @@
+import { ArrowRight, Download, FileText } from "lucide-react";
 import Link from "next/link";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { RunEvaluationDialog } from "@/components/evaluations/run-evaluation-dialog";
 import { PageHeading } from "@/components/models/page-heading";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -67,6 +69,18 @@ function classifyReport(row: {
     type: "Passing run report",
     contains: "Run metrics, per-test outputs, telemetry, configuration, and audit evidence.",
   };
+}
+
+function getReportTone(row: {
+  status: string;
+  regressions: number;
+  passRate: number | null;
+}): "neutral" | "success" | "warning" | "danger" {
+  if (row.regressions > 0) return "danger";
+  if (row.status !== "COMPLETED") return "warning";
+  if (row.passRate === null || row.passRate < 100) return "warning";
+
+  return "success";
 }
 
 async function getReportsPageState() {
@@ -140,6 +154,27 @@ export default async function ReportsPage() {
         : "Reports could not load from Supabase.";
   }
 
+  const reportSummary = state
+    ? {
+        totalReports: state.rows.length,
+        totalTests: state.rows.reduce((sum, row) => sum + row.tests, 0),
+        openRegressions: state.rows.reduce(
+          (sum, row) => sum + row.regressions,
+          0,
+        ),
+        averagePassRate:
+          state.rows.filter((row) => row.passRate !== null).length === 0
+            ? null
+            : Math.round(
+                state.rows.reduce(
+                  (sum, row) => sum + (row.passRate ?? 0),
+                  0,
+                ) /
+                  state.rows.filter((row) => row.passRate !== null).length,
+              ),
+      }
+    : null;
+
   return (
     <div className="space-y-6">
       <PageHeading
@@ -148,6 +183,7 @@ export default async function ReportsPage() {
         description="Browse every persisted evaluation report. Each report opens the current run summary, evidence, regressions, Hindsight context, and recommendations."
         action={
           <div className="flex flex-wrap gap-2">
+            <Link href="/demo/recurrence" className="inline-flex h-9 items-center justify-center rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700">See recurrence demo</Link>
             <RunEvaluationDialog
               action={submitAutomaticEvaluationAction}
               initialState={initialRunEvaluationActionState}
@@ -179,28 +215,236 @@ export default async function ReportsPage() {
         />
       ) : (
         <div className="space-y-4">
+          <section className="overflow-hidden rounded-md border border-stone-200 bg-white">
+            <div className="grid gap-6 border-b border-stone-200 bg-stone-50/80 p-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-semibold text-stone-950">
+                    Evaluation reports
+                  </h2>
+                  <StatusBadge tone="neutral">
+                    {reportSummary?.totalReports ?? 0} stored
+                  </StatusBadge>
+                </div>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+                  Review each run by outcome, project, version, test coverage,
+                  and regression impact. Open a report for the full evidence
+                  trail or download it for sharing.
+                </p>
+              </div>
+
+              <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-stone-200 bg-stone-200 text-sm">
+                <div className="bg-white p-3">
+                  <dt className="text-xs font-medium uppercase tracking-[0.08em] text-stone-500">
+                    Avg pass rate
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-stone-950">
+                    {reportSummary?.averagePassRate === null
+                      ? "No data"
+                      : `${reportSummary?.averagePassRate ?? 0}%`}
+                  </dd>
+                </div>
+                <div className="bg-white p-3">
+                  <dt className="text-xs font-medium uppercase tracking-[0.08em] text-stone-500">
+                    Tests covered
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-stone-950">
+                    {reportSummary?.totalTests ?? 0}
+                  </dd>
+                </div>
+                <div className="bg-white p-3">
+                  <dt className="text-xs font-medium uppercase tracking-[0.08em] text-stone-500">
+                    Regressions
+                  </dt>
+                  <dd
+                    className={[
+                      "mt-1 text-lg font-semibold tabular-nums",
+                      (reportSummary?.openRegressions ?? 0) > 0
+                        ? "text-rose-700"
+                        : "text-stone-950",
+                    ].join(" ")}
+                  >
+                    {reportSummary?.openRegressions ?? 0}
+                  </dd>
+                </div>
+                <div className="bg-white p-3">
+                  <dt className="text-xs font-medium uppercase tracking-[0.08em] text-stone-500">
+                    Latest report
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-stone-950">
+                    {state.rows[0]?.date ?? "No data"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="divide-y divide-stone-200">
+              {state.rows.map((row) => (
+                <article
+                  key={row.id}
+                  className="grid gap-5 p-5 transition-colors hover:bg-stone-50/70 xl:grid-cols-[minmax(0,1fr)_380px]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge tone={getReportTone(row)}>
+                        {row.type}
+                      </StatusBadge>
+                      <span className="text-xs font-medium text-stone-500">
+                        {row.date}
+                      </span>
+                      <span className="text-xs font-medium text-stone-500">
+                        {row.status}
+                      </span>
+                    </div>
+
+                    <h3 className="mt-3 text-base font-semibold text-stone-950">
+                      {row.projectId ? (
+                        <Link
+                          href={`/projects/${row.projectId}`}
+                          className="transition-colors hover:text-stone-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
+                        >
+                          {row.project}
+                        </Link>
+                      ) : (
+                        row.project
+                      )}
+                      <span className="font-normal text-stone-500">
+                        {" "}
+                        / {row.version}
+                      </span>
+                    </h3>
+
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
+                      {row.contains}
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Link
+                        href={`/reports/${row.id}`}
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-stone-950 px-3 text-sm font-semibold text-white transition-colors hover:bg-stone-800 active:translate-y-px"
+                      >
+                        <FileText
+                          className="size-4"
+                          strokeWidth={1.8}
+                          aria-hidden="true"
+                        />
+                        Open report
+                        <ArrowRight
+                          className="size-4"
+                          strokeWidth={1.8}
+                          aria-hidden="true"
+                        />
+                      </Link>
+                      <Link
+                        href={`/reports/${row.id}/export`}
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50 active:translate-y-px"
+                      >
+                        <Download
+                          className="size-4"
+                          strokeWidth={1.8}
+                          aria-hidden="true"
+                        />
+                        Download
+                      </Link>
+                    </div>
+                  </div>
+
+                  <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-stone-200 bg-stone-200 text-sm sm:grid-cols-4 xl:grid-cols-2">
+                    <div className="bg-white p-3">
+                      <dt className="text-xs font-medium uppercase tracking-[0.08em] text-stone-500">
+                        Pass rate
+                      </dt>
+                      <dd
+                        className={[
+                          "mt-1 text-lg font-semibold tabular-nums",
+                          row.passRate !== null && row.passRate < 100
+                            ? "text-amber-700"
+                            : "text-stone-950",
+                        ].join(" ")}
+                      >
+                        {row.passRate === null ? "No data" : `${row.passRate}%`}
+                      </dd>
+                    </div>
+                    <div className="bg-white p-3">
+                      <dt className="text-xs font-medium uppercase tracking-[0.08em] text-stone-500">
+                        Tests
+                      </dt>
+                      <dd className="mt-1 text-lg font-semibold tabular-nums text-stone-950">
+                        {row.tests}
+                      </dd>
+                    </div>
+                    <div className="bg-white p-3">
+                      <dt className="text-xs font-medium uppercase tracking-[0.08em] text-stone-500">
+                        Regressions
+                      </dt>
+                      <dd
+                        className={[
+                          "mt-1 text-lg font-semibold tabular-nums",
+                          row.regressions > 0
+                            ? "text-rose-700"
+                            : "text-stone-950",
+                        ].join(" ")}
+                      >
+                        {row.regressions}
+                      </dd>
+                    </div>
+                    <div className="bg-white p-3">
+                      <dt className="text-xs font-medium uppercase tracking-[0.08em] text-stone-500">
+                        Score
+                      </dt>
+                      <dd className="mt-1 text-lg font-semibold tabular-nums text-stone-950">
+                        {row.score === null ? "No data" : `${row.score}%`}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          </section>
+
           <section className="grid gap-3 md:grid-cols-4">
             {[
               {
                 title: "Run reports",
                 copy: "One evaluation run with actual outputs, scores, pass/fail, telemetry, and export.",
+                href: "/runs",
+                action: "View Run Reports",
               },
               {
                 title: "Version reports",
                 copy: "Latest run for a model version, configuration, changes, failures, memory, and recommendations.",
+                href: "/versions",
+                action: "View Version Reports",
               },
               {
                 title: "Comparison reports",
                 copy: "A/B version comparison for pass rate, score, telemetry, tests added/removed, and config changes.",
+                href: "/compare",
+                action: "View Comparison Reports",
               },
               {
                 title: "Regression investigations",
                 copy: "PASS to FAIL, persistent failure, resolved failure, score degradation, and historical evidence.",
+                href: "/reports",
+                action: "View Regression Reports",
               },
             ].map((item) => (
-              <article key={item.title} className="rounded-md border border-stone-200 bg-white p-4">
-                <h2 className="text-sm font-semibold text-stone-950">{item.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-stone-600">{item.copy}</p>
+              <article
+                key={item.title}
+                className="flex min-h-56 flex-col rounded-md border border-stone-200 bg-white p-4"
+              >
+                <h2 className="text-sm font-semibold text-stone-950">
+                  {item.title}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-stone-600">
+                  {item.copy}
+                </p>
+                <Link
+                  href={item.href}
+                  className="mt-auto inline-flex h-9 items-center justify-center rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50 active:translate-y-px"
+                >
+                  {item.action}
+                </Link>
               </article>
             ))}
           </section>
@@ -268,78 +512,6 @@ export default async function ReportsPage() {
                 </div>
               </article>
             ))}
-          </section>
-
-          <section className="rounded-md border border-stone-200 bg-white">
-            <div className="border-b border-stone-200 p-4">
-              <h2 className="text-sm font-semibold text-stone-950">
-                Evaluation Reports
-              </h2>
-              <p className="mt-1 text-sm text-stone-600">
-                Reports are public inside this app and open without hidden routes.
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-[1080px] text-left text-sm">
-                <thead className="border-b border-stone-200 bg-stone-50 text-xs uppercase tracking-[0.08em] text-stone-500">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Report</th>
-                    <th className="px-4 py-3 font-semibold">Type</th>
-                    <th className="px-4 py-3 font-semibold">What It Contains</th>
-                    <th className="px-4 py-3 font-semibold">Project</th>
-                    <th className="px-4 py-3 font-semibold">Version</th>
-                    <th className="px-4 py-3 font-semibold">Tests</th>
-                    <th className="px-4 py-3 font-semibold">Pass Rate</th>
-                    <th className="px-4 py-3 font-semibold">Regressions</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-200">
-                  {state.rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-stone-50">
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Link
-                            href={`/reports/${row.id}`}
-                            className="inline-flex h-8 items-center justify-center rounded-md bg-stone-950 px-3 text-xs font-semibold text-white"
-                          >
-                            Open Report
-                          </Link>
-                          <Link
-                            href={`/reports/${row.id}/export`}
-                            className="inline-flex h-8 items-center justify-center rounded-md border border-stone-200 px-3 text-xs font-semibold text-stone-700"
-                          >
-                            Download
-                          </Link>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-stone-950">
-                        {row.type}
-                      </td>
-                      <td className="max-w-sm px-4 py-3 text-stone-600">
-                        {row.contains}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-stone-950">
-                        {row.projectId ? (
-                          <Link href={`/projects/${row.projectId}`}>{row.project}</Link>
-                        ) : (
-                          row.project
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-stone-600">{row.version}</td>
-                      <td className="px-4 py-3 text-stone-600">{row.tests}</td>
-                      <td className="px-4 py-3 text-stone-950">
-                        {row.passRate === null ? "No data" : `${row.passRate}%`}
-                      </td>
-                      <td className="px-4 py-3 text-stone-600">{row.regressions}</td>
-                      <td className="px-4 py-3 text-stone-600">{row.status}</td>
-                      <td className="px-4 py-3 text-stone-600">{row.date}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </section>
           </div>
       )}

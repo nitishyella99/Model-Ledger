@@ -3,16 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "deployment:check": "node scripts/deployment-preflight.mjs",
+    "worker:build": "node scripts/build-model-worker.mjs",
     "dev": "next dev",
     "build": "next build",
+    "start": "next start",
     "lint": "eslint",
     "test": "node scripts/run-evaluation-tests.mjs",
     "supabase:check": "node scripts/check-supabase.mjs",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@aws-sdk/s3-request-presigner": "^3.1146.0",
+    "@clerk/nextjs": "^7.9.10",
     "@supabase/supabase-js": "^2.117.2",
     "@vectorize-io/hindsight-client": "^0.8.6",
+    "ipaddr.js": "^2.5.0",
     "lucide-react": "latest",
     "next": "latest",
     "react": "latest",
@@ -21,10 +28,12 @@
     "zod": "latest"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.6",
     "tailwindcss": "latest",

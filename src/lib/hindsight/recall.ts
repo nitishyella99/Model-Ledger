@@ -1,3 +1,4 @@
+import { requireOwnedModel } from "@/lib/data/models";
 import "server-only";
 
 import { getHindsightClient } from "./client";
@@ -28,6 +29,7 @@ function buildEvaluationRecallQuery(input: RecallForEvaluationInput) {
 }
 
 export async function recallForEvaluation(input: RecallForEvaluationInput) {
+  await requireOwnedModel(input.modelId);
   const query = buildEvaluationRecallQuery(input);
 
   return recallMemoryWithClient(getHindsightClient(), input.modelId, query, {
@@ -55,6 +57,7 @@ export async function recallMemorySearch(input: RecallMemorySearchInput) {
   ]
     .filter(Boolean)
     .join(" ");
+  await requireOwnedModel(input.modelId);
   const result = await recallMemoryWithClient(
     getHindsightClient(),
     input.modelId,

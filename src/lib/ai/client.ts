@@ -111,7 +111,7 @@ export const completeEvaluationAnalysis: AiCompletionProvider = async (
               json_schema: {
                 name: request.schemaName,
                 strict: true,
-                schema: evaluationAiAnalysisJsonSchema,
+                schema: request.jsonSchema ?? evaluationAiAnalysisJsonSchema,
               },
             }
           : {
@@ -130,8 +130,9 @@ export const completeEvaluationAnalysis: AiCompletionProvider = async (
   }
 };
 
-export const completeLlmJudge: AiCompletionProvider = async (
+export const completeJsonCompletion = async (
   request: AiCompletionRequest,
+  options: { timeoutMs?: number; maxTokens?: number } = {},
 ) => {
   const config = getProviderConfig();
 
@@ -140,7 +141,7 @@ export const completeLlmJudge: AiCompletionProvider = async (
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   try {
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: "POST",
@@ -156,14 +157,18 @@ export const completeLlmJudge: AiCompletionProvider = async (
           { role: "user", content: request.user },
         ],
         temperature: 0,
-        response_format: {
+        ...(options.maxTokens ? { max_tokens: options.maxTokens } : {}),
+        response_format: request.jsonSchema && supportsStrictJsonSchema(config.provider) ? {
+          type: "json_schema",
+          json_schema: { name: request.schemaName, strict: true, schema: request.jsonSchema },
+        } : {
           type: "json_object",
         },
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`LLM judge request failed with status ${response.status}.`);
+      throw new Error(`LLM request failed with status ${response.status}.`);
     }
 
     return extractJsonContent((await response.json()) as ChatCompletionResponse);
@@ -171,3 +176,9 @@ export const completeLlmJudge: AiCompletionProvider = async (
     clearTimeout(timeout);
   }
 };
+
+export const completeLlmJudge = completeJsonCompletion;
+export const completeRunAnalysis: AiCompletionProvider = (request) =>
+  completeJsonCompletion(request, { timeoutMs: 75_000, maxTokens: 6000 });
+export const completeTestCaseGeneration: AiCompletionProvider = (request) =>
+  completeJsonCompletion(request, { timeoutMs: 75_000, maxTokens: 12000 });

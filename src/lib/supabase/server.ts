@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { auth } from "@clerk/nextjs/server";
 
 function getSupabasePublicConfig() {
   const supabaseUrl =
@@ -19,10 +20,17 @@ function getSupabasePublicConfig() {
   return { supabaseUrl, supabaseAnonKey };
 }
 
-export function createSupabaseServerClient() {
+export async function createSupabaseServerClient() {
+  const session = await auth();
+  if (!session.userId) throw new Error("Sign in to continue.");
   const { supabaseUrl, supabaseAnonKey } = getSupabasePublicConfig();
 
   return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    accessToken: async () => {
+      const token = await session.getToken();
+      if (!token) throw new Error("Your session expired. Sign in again.");
+      return token;
+    },
     auth: {
       persistSession: false,
       autoRefreshToken: false,

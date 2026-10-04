@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { DetailSection } from "@/components/evaluations/detail-section";
 import { FactGrid } from "@/components/evaluations/fact-grid";
 import { ModelConfigurationForm } from "@/components/models/model-configuration-form";
+import { versionOperation } from "@/lib/deployment/service";
+import { NextStep } from "@/components/projects/next-step";
 import { PageHeading } from "@/components/models/page-heading";
 import { getEvaluationDatasetByModelId } from "@/lib/data/evaluation-engine";
 import {
@@ -85,6 +87,7 @@ export default async function VersionDetailPage({ params }: VersionDetailPagePro
   if (!project) {
     notFound();
   }
+  const operation=await versionOperation(project.id,version.id);
 
   const versionRuns = evaluations.filter(
     (evaluation) => evaluation.model_version_id === version.id,
@@ -211,12 +214,12 @@ export default async function VersionDetailPage({ params }: VersionDetailPagePro
         />
       </DetailSection>
 
-      <ModelConfigurationForm
+      {operation ? <><NextStep key={`${operation.id}:${operation.updated_at}`} initial={operation} /><details className="rounded-md border border-stone-200 p-4 text-sm"><summary className="cursor-pointer">Advanced model details</summary><p className="mt-3">The connection is managed automatically for this version. Create the next version from your project to change the model.</p><p className="mt-2">Model: {configuration?.model_name || "Preparing"} · Revision: {operation.artifact_revision || "Pending preparation"}</p></details></> : <ModelConfigurationForm
         action={saveModelVersionConfigurationAction}
         initialActionState={initialConfigurationActionState}
         versionId={version.id}
         configuration={configuration}
-      />
+      />}
 
       <DetailSection label="RUN SUMMARY" title="Latest Evaluation Snapshot" description="Latest run for this version plus total run count.">
         <FactGrid

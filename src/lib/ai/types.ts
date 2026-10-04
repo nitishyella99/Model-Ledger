@@ -61,6 +61,7 @@ export type AiCompletionRequest = Readonly<{
   system: string;
   user: string;
   schemaName: string;
+  jsonSchema?: Record<string, unknown>;
 }>;
 
 export type AiCompletionProvider = (

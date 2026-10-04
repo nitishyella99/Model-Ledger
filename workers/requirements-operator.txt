@@ -1,0 +1,2 @@
+# Operator CLI only; runtime dependencies are pinned in modal_app.py.
+modal==1.6.0

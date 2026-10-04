@@ -1,0 +1,9 @@
+[
+  {
+    "AllowedOrigins": ["https://model-ledger-sigma.vercel.app", "http://localhost:3000"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]

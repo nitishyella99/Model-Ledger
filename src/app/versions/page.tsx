@@ -1,4 +1,5 @@
 import { AddVersionForm } from "@/components/models/add-version-form";
+import { EditVersionsForm } from "@/components/models/edit-versions-form";
 import { PageHeading } from "@/components/models/page-heading";
 import { VersionList } from "@/components/models/version-list";
 import type { VersionListItem } from "@/components/models/version-list";
@@ -9,12 +10,18 @@ import {
   getVersionsByModelId,
 } from "@/lib/data/versions";
 import { getVersionSummary } from "@/lib/evaluation/reporting";
-import { addVersionAction } from "./actions";
-import type { AddVersionActionState } from "./actions";
+import { addVersionAction, updateVersionsAction } from "./actions";
+import type {
+  AddVersionActionState,
+  UpdateVersionsActionState,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
 const initialAddVersionActionState: AddVersionActionState = {
+  status: "idle",
+};
+const initialUpdateVersionsActionState: UpdateVersionsActionState = {
   status: "idle",
 };
 
@@ -128,6 +135,20 @@ async function getVersionsPageState() {
           label: model.name,
           value: model.id,
         })),
+        editProjects: modelStates.map((state) => ({
+          id: state.model.id,
+          name: state.model.name,
+          versions: [...state.versions]
+            .sort(
+              (a, b) =>
+                new Date(a.created_at).getTime() -
+                new Date(b.created_at).getTime(),
+            )
+            .map((version) => ({
+              id: version.id,
+              version: version.version,
+            })),
+        })),
         versionRows,
         comparison: null,
     };
@@ -159,7 +180,7 @@ export default async function VersionsPage({ searchParams }: VersionsPageProps) 
         <PageHeading
           eyebrow="Model Versions"
           title="Versions"
-          description="Track what changed between evaluated versions."
+          description="Create versions in the order you want them compared."
         />
         <PageMessage title={state.title} description={state.description} />
       </div>
@@ -171,18 +192,28 @@ export default async function VersionsPage({ searchParams }: VersionsPageProps) 
       <PageHeading
         eyebrow={state.modelName}
         title="Versions"
-        description="Track what changed between evaluated versions using stored database facts."
-      />
-      <AddVersionForm
-        action={addVersionAction}
-        initialActionState={initialAddVersionActionState}
-        models={state.modelOptions}
-        initialModelId={requested?.project}
+        description="Add a version, then keep the chronological history visible so comparisons are easy to follow."
+        action={
+          <div className="flex flex-wrap justify-end gap-2">
+            <AddVersionForm
+              action={addVersionAction}
+              initialActionState={initialAddVersionActionState}
+              models={state.modelOptions}
+              initialModelId={requested?.project}
+            />
+            <EditVersionsForm
+              action={updateVersionsAction}
+              initialActionState={initialUpdateVersionsActionState}
+              projects={state.editProjects}
+              initialModelId={requested?.project}
+            />
+          </div>
+        }
       />
       <VersionList items={state.versionRows} />
       <PageMessage
         title="Comparison is project-scoped"
-        description="Open a project workspace to compare versions using that project's stored tests and evaluation history."
+        description="Use Compare or open a project workspace to compare versions using that project's stored tests and reports."
       />
     </div>
   );

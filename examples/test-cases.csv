@@ -1,0 +1,4 @@
+stable_key,name,category,input,expected_output,evaluator_type,threshold,severity,tags
+capital-france,France capital,factual,What is the capital of France?,Paris,contains,1,MEDIUM,factual
+arithmetic-addition,Simple addition,reasoning,What is 2 plus 2? Reply with only the number.,4,exact_match,1,MEDIUM,reasoning
+formatting-json,JSON response,formatting,"Return a JSON object with the key status and value ok. Do not add any other text.","{""status"":""ok""}",exact_match,1,HIGH,formatting

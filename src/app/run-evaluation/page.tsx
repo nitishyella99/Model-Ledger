@@ -131,6 +131,7 @@ type RunEvaluationPageProps = Readonly<{
   searchParams?: Promise<{
     project?: string;
     version?: string;
+    testKey?: string | string[];
   }>;
 }>;
 
@@ -179,6 +180,7 @@ export default async function RunEvaluationPage({
             importCsvAction={importTestCasesCsvAction}
             initialModelId={requested?.project}
             initialVersionId={requested?.version}
+            initialTestKeys={requested?.testKey ? (Array.isArray(requested.testKey) ? requested.testKey : [requested.testKey]) : []}
           />
         )
       ) : (

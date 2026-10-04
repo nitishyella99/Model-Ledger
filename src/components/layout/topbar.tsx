@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { PlayCircle } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import { getPageTitle } from "@/components/layout/navigation";
 
 export function Topbar() {
@@ -22,12 +23,13 @@ export function Topbar() {
         </div>
 
         <div className="flex items-center gap-2">
+          <UserButton userProfileMode="navigation" userProfileUrl="/profile" />
           <Link
             href="/run-evaluation"
             className="hidden h-9 items-center gap-2 rounded-md bg-stone-950 px-3 text-sm font-semibold text-white transition-colors hover:bg-stone-800 active:translate-y-px sm:inline-flex"
           >
             <PlayCircle className="size-4" strokeWidth={1.8} aria-hidden="true" />
-            Run Evaluation
+            Generate Report
           </Link>
         </div>
       </div>

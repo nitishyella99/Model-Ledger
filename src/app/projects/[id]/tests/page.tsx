@@ -40,8 +40,8 @@ export default async function ProjectTestsPage({
     <div className="space-y-6">
       <PageHeading
         eyebrow={project.name}
-        title="Project tests"
-        description="Manage the canonical test cases for this project. These stay stable across versions so regressions and improvements can be compared cleanly."
+        title="Project test cases"
+        description="Upload or review the reusable test cases for this project. These cases stay stable across versions so reports and comparisons make sense."
         action={
           <Link
             href={`/projects/${project.id}`}
@@ -62,14 +62,15 @@ export default async function ProjectTestsPage({
               {testCases.length} canonical tests
             </h2>
             <p className="mt-1 text-sm leading-6 text-stone-600">
-              Import CSV first, then run the suite against a selected version.
+              Import CSV first, then generate a report against a selected
+              version.
             </p>
           </div>
           <Link
             href={`/run-evaluation?project=${project.id}`}
             className="inline-flex h-9 items-center justify-center rounded-md bg-stone-950 px-3 text-sm font-semibold text-white transition-colors hover:bg-stone-800 active:translate-y-px"
           >
-            Test this version
+            Generate report
           </Link>
         </div>
       </section>
@@ -86,8 +87,8 @@ export default async function ProjectTestsPage({
 
       {testCases.length === 0 ? (
         <EmptyState
-          title="No test cases yet"
-          description="Upload a CSV file above to create the first reusable test suite for this project."
+            title="No test cases yet"
+          description="Upload a CSV file above before generating a report. Reports need at least one reusable test case."
         />
       ) : (
         <section className="rounded-md border border-stone-200 bg-white">

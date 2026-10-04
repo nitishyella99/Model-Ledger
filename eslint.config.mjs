@@ -9,6 +9,8 @@ export default defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "workers/dist/**",
+    ".venv-modal/**",
     ".evaluation-test-dist/**",
     "next-env.d.ts",
     "tsconfig.tsbuildinfo",

@@ -2,8 +2,8 @@ import Link from "next/link";
 
 const tabs = [
   { key: "overview", label: "Overview", section: "overview" },
-  { key: "tests", label: "Tests", path: "tests" },
-  { key: "runs", label: "Runs", section: "runs" },
+  { key: "tests", label: "Test Cases", path: "tests" },
+  { key: "runs", label: "Reports", section: "runs" },
   { key: "compare", label: "Compare", section: "compare" },
   { key: "memory", label: "Memory", section: "memory" },
 ] as const;

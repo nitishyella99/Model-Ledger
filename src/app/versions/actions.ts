@@ -1,5 +1,9 @@
 "use server";
 
+import { requireUserId } from "@/lib/auth";
+import { versionOperation } from "@/lib/deployment/service";
+import { getVersionById } from "@/lib/data/versions";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { updateModel } from "@/lib/data/models";
@@ -7,6 +11,9 @@ import { upsertModelVersionConfiguration } from "@/lib/data/model-configurations
 import {
   createModelVersion,
   createVersionChanges,
+  deleteModelVersion,
+  getChronologicalVersionsByModelId,
+  updateModelVersion,
 } from "@/lib/data/versions";
 import {
   retainVersionApprovalDecision,
@@ -100,6 +107,24 @@ export type AddVersionActionState = {
   fieldErrors?: Partial<Record<keyof z.infer<typeof addVersionSchema>, string>>;
 };
 
+const updateVersionsSchema = z.object({
+  modelId: z.string().uuid("Select a valid project."),
+  versionIds: z.array(z.string().uuid("Select a valid version.")),
+  versionNames: z.array(
+    z
+      .string()
+      .trim()
+      .min(1, "Version name is required.")
+      .max(80, "Version name must be 80 characters or fewer."),
+  ),
+  deletedVersionIds: z.array(z.string().uuid("Select a valid version.")),
+});
+
+export type UpdateVersionsActionState = {
+  status: "idle" | "success" | "error";
+  message?: string;
+};
+
 const modelVersionConfigurationSchema = z.object({
   modelVersionId: z.string().uuid("Select a valid model version."),
   provider: z.string().trim().min(1).max(80),
@@ -133,6 +158,7 @@ export async function addVersionAction(
   _previousState: AddVersionActionState,
   formData: FormData,
 ): Promise<AddVersionActionState> {
+  await requireUserId();
   const parsed = addVersionSchema.safeParse({
     modelId: getStringValue(formData, "modelId"),
     version: getStringValue(formData, "version"),
@@ -206,7 +232,7 @@ export async function addVersionAction(
       updated_at: new Date().toISOString(),
     });
 
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     revalidatePath("/models");
     revalidatePath("/versions");
     revalidatePath(`/projects/${parsed.data.modelId}`);
@@ -227,10 +253,146 @@ export async function addVersionAction(
   }
 }
 
+export async function updateVersionsAction(
+  _previousState: UpdateVersionsActionState,
+  formData: FormData,
+): Promise<UpdateVersionsActionState> {
+  await requireUserId();
+  const parsed = updateVersionsSchema.safeParse({
+    modelId: getStringValue(formData, "modelId"),
+    versionIds: formData
+      .getAll("versionIds")
+      .filter((value): value is string => typeof value === "string"),
+    versionNames: formData
+      .getAll("versionNames")
+      .filter((value): value is string => typeof value === "string"),
+    deletedVersionIds: formData
+      .getAll("deletedVersionIds")
+      .filter((value): value is string => typeof value === "string"),
+  });
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message:
+        parsed.error.issues[0]?.message ??
+        "Fix the version names before saving.",
+    };
+  }
+
+  if (parsed.data.versionIds.length !== parsed.data.versionNames.length) {
+    return {
+      status: "error",
+      message: "Each version row needs one version name.",
+    };
+  }
+
+  const normalizedNames = parsed.data.versionNames.map((name) => name.trim());
+  const lowerNames = normalizedNames.map((name) => name.toLowerCase());
+
+  if (new Set(lowerNames).size !== lowerNames.length) {
+    return {
+      status: "error",
+      message: "Version names must be unique for a project.",
+    };
+  }
+
+  const currentVersions = await getChronologicalVersionsByModelId(
+    parsed.data.modelId,
+  );
+  const projectVersionIds = new Set(
+    currentVersions.map((version) => version.id),
+  );
+  const submittedIds = [
+    ...parsed.data.versionIds,
+    ...parsed.data.deletedVersionIds,
+  ];
+  const hasForeignVersion = submittedIds.some(
+    (versionId) => !projectVersionIds.has(versionId),
+  );
+
+  if (hasForeignVersion) {
+    return {
+      status: "error",
+      message: "One of the selected versions does not belong to this project.",
+    };
+  }
+
+  try {
+    const remainingVersionIds = new Set(parsed.data.versionIds);
+    const versionsById = new Map(
+      currentVersions.map((version) => [version.id, version]),
+    );
+
+    await Promise.all(
+      parsed.data.deletedVersionIds.map((versionId) =>
+        deleteModelVersion(versionId),
+      ),
+    );
+
+    const changedNameIds = parsed.data.versionIds.filter((versionId, index) => {
+      const currentVersion = versionsById.get(versionId);
+
+      return currentVersion && currentVersion.version !== normalizedNames[index];
+    });
+    const temporaryPrefix = `__editing_${Date.now()}_`;
+
+    await Promise.all(
+      changedNameIds.map((versionId, index) =>
+        updateModelVersion(versionId, {
+          version: `${temporaryPrefix}${index}`,
+        }),
+      ),
+    );
+
+    const baseTime = Date.now() - parsed.data.versionIds.length * 1000;
+
+    await Promise.all(
+      parsed.data.versionIds.map((versionId, index) =>
+        updateModelVersion(versionId, {
+          version: normalizedNames[index],
+          created_at: new Date(baseTime + index * 1000).toISOString(),
+        }),
+      ),
+    );
+
+    await updateModel(parsed.data.modelId, {
+      current_model_version_id:
+        parsed.data.versionIds.at(-1) && remainingVersionIds.size > 0
+          ? parsed.data.versionIds.at(-1)
+          : null,
+      updated_at: new Date().toISOString(),
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/models");
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${parsed.data.modelId}`);
+    revalidatePath("/versions");
+    revalidatePath("/compare");
+    revalidatePath("/reports");
+    revalidatePath("/run-evaluation");
+
+    return {
+      status: "success",
+      message: "Versions updated.",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Versions could not be updated.",
+    };
+  }
+}
+
 export async function saveModelVersionConfigurationAction(
   _previousState: ModelVersionConfigurationActionState,
   formData: FormData,
 ): Promise<ModelVersionConfigurationActionState> {
+  await requireUserId();
   const parsed = modelVersionConfigurationSchema.safeParse({
     modelVersionId: getStringValue(formData, "modelVersionId"),
     provider: getStringValue(formData, "provider"),
@@ -269,6 +431,9 @@ export async function saveModelVersionConfigurationAction(
     }
   }
 
+  const selectedVersion=await getVersionById(parsed.data.modelVersionId);
+  if(!selectedVersion)return {status:"error",message:"Version not found."};
+  if(await versionOperation(selectedVersion.model_id,selectedVersion.id))return {status:"error",message:"This version’s connection is managed by guided setup. Add a new version to change the model."};
   await upsertModelVersionConfiguration({
     model_version_id: parsed.data.modelVersionId,
     provider: parsed.data.provider,
@@ -287,7 +452,7 @@ export async function saveModelVersionConfigurationAction(
   revalidatePath(`/versions/${parsed.data.modelVersionId}`);
   revalidatePath("/run-evaluation");
   revalidatePath("/compare");
-  revalidatePath("/");
+  revalidatePath("/dashboard");
 
   return {
     status: "success",

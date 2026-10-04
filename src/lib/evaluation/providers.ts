@@ -48,15 +48,23 @@ function defaultBaseUrlForProvider(provider: string) {
 function normalizeBaseUrl(value: string | null, provider: string) {
   return (value || defaultBaseUrlForProvider(provider)).replace(/\/+$/, "");
 }
+export function modelEndpoint(configuration: ModelExecutionRequest["configuration"]) {
+  return configuration.endpointUrl || `${normalizeBaseUrl(configuration.baseUrl,configuration.provider)}/chat/completions`;
+}
 
-function getApiKey(credentialReference: string) {
-  const key = credentialReference.trim();
-
-  if (!key) {
-    return null;
-  }
-
-  return process.env[key] ?? null;
+export function resolveOperatorCredential(credentialReference: string, endpoint: string) {
+  const destinations: Record<string,string | undefined> = {
+    NVIDIA_API_KEY: "https://integrate.api.nvidia.com",
+    OPENAI_API_KEY: "https://api.openai.com",
+    GROQ_API_KEY: "https://api.groq.com",
+    LLM_API_KEY: process.env.LLM_BASE_URL,
+    CUSTOM_MODEL_API_KEY: process.env.CUSTOM_MODEL_BASE_URL,
+  };
+  const destination = destinations[credentialReference.trim()];
+  if(!destination)return null;
+  try {
+    return new URL(endpoint).origin === new URL(destination).origin ? process.env[credentialReference.trim()] || null : null;
+  } catch { return null; }
 }
 
 function defaultTimeoutMsForProvider(provider: string) {
@@ -69,26 +77,8 @@ function defaultTimeoutMsForProvider(provider: string) {
   return 30_000;
 }
 
-function resolveModelName(provider: string, modelName: string) {
-  const normalizedProvider = provider.trim().toLowerCase();
-  const trimmedModel = modelName ? modelName.trim() : "";
-
-  if (
-    normalizedProvider === "nvidia-nim" ||
-    normalizedProvider === "nvidia" ||
-    process.env.NVIDIA_API_KEY
-  ) {
-    if (
-      !trimmedModel ||
-      trimmedModel === "deepseek-ai/deepseek-v4.1-flash" ||
-      trimmedModel.includes("llama-3.3-70b") ||
-      trimmedModel.includes("llama-3.1-70b")
-    ) {
-      return process.env.LLM_MODEL || "meta/llama-3.2-11b-vision-instruct";
-    }
-  }
-
-  return trimmedModel || process.env.LLM_MODEL || "meta/llama-3.2-11b-vision-instruct";
+export function resolveModelName(_provider: string, modelName: string) {
+  return modelName.trim();
 }
 
 function statusForHttpStatus(status: number): ModelExecutionResult["status"] {
@@ -132,13 +122,17 @@ function estimateOpenAiCompatibleCost(
 }
 
 export class OpenAiCompatibleExecutor implements ModelExecutor {
+  constructor(private readonly options: { resolveCredential?: (reference: string) => Promise<string | null>; fetch?: typeof fetch; allowAnonymous?: boolean } = {}) {}
   async execute(
     request: ModelExecutionRequest,
   ): Promise<ModelExecutionResult> {
     const startedAt = Date.now();
-    const apiKey = getApiKey(request.configuration.credentialReference);
+    const endpoint=modelEndpoint(request.configuration);
+    const apiKey = this.options.resolveCredential
+      ? await this.options.resolveCredential(request.configuration.credentialReference)
+      : resolveOperatorCredential(request.configuration.credentialReference,endpoint);
 
-    if (!apiKey) {
+    if (!apiKey && !this.options.allowAnonymous) {
       return {
         output: "",
         latencyMs: Date.now() - startedAt,
@@ -163,20 +157,17 @@ export class OpenAiCompatibleExecutor implements ModelExecutor {
     );
 
     try {
-      const response = await fetch(
-        request.configuration.endpointUrl ||
-          `${normalizeBaseUrl(
-            request.configuration.baseUrl,
-            request.configuration.provider,
-          )}/chat/completions`,
+      const response = await (this.options.fetch ?? fetch)(
+        endpoint,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${apiKey}`,
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
             "Content-Type": "application/json",
           },
           signal: controller.signal,
           body: JSON.stringify({
+            ...((request.configuration.providerSettings && typeof request.configuration.providerSettings === "object" && !Array.isArray(request.configuration.providerSettings) ? request.configuration.providerSettings : {}) as Record<string, unknown>),
             model: effectiveModelName,
             messages: [
               ...(request.configuration.systemPrompt
@@ -194,11 +185,6 @@ export class OpenAiCompatibleExecutor implements ModelExecutor {
             ],
             temperature: request.configuration.temperature,
             max_tokens: request.configuration.maxTokens ?? undefined,
-            ...((request.configuration.providerSettings &&
-            typeof request.configuration.providerSettings === "object" &&
-            !Array.isArray(request.configuration.providerSettings)
-              ? request.configuration.providerSettings
-              : {}) as Record<string, unknown>),
           }),
         },
       );
@@ -272,7 +258,7 @@ export class OpenAiCompatibleExecutor implements ModelExecutor {
   }
 }
 
-export function createModelExecutor(provider: string): ModelExecutor {
+export function createModelExecutor(provider: string, options?: { fetch?: typeof fetch }): ModelExecutor {
   const normalizedProvider = provider.trim().toLowerCase();
 
   if (
@@ -282,7 +268,7 @@ export function createModelExecutor(provider: string): ModelExecutor {
     normalizedProvider === "nvidia" ||
     normalizedProvider === "groq"
   ) {
-    return new OpenAiCompatibleExecutor();
+    return new OpenAiCompatibleExecutor(options);
   }
 
   throw new Error(`Unsupported model provider: ${provider}`);

@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GitCommitHorizontal, Plus, RotateCcw } from "lucide-react";
+import { GitCommitHorizontal, Plus, RotateCcw, X } from "lucide-react";
 import type {
   AddVersionActionState,
   addVersionAction,
@@ -46,6 +46,7 @@ export function AddVersionForm({
 }: AddVersionFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const [isOpen, setIsOpen] = useState(Boolean(initialModelId));
   const [selectedChangeLabel, setSelectedChangeLabel] = useState("");
   const [fieldName, setFieldName] = useState("");
   const [state, formAction, isPending] = useActionState(
@@ -70,16 +71,52 @@ export function AddVersionForm({
   }, [router, state.createdVersionId, state.status]);
 
   return (
+    <>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800 active:translate-y-px"
+        >
+          <Plus className="size-4" strokeWidth={1.8} aria-hidden="true" />
+          Add Version
+        </button>
+      </div>
+
+      {isOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-stone-950/35 p-4 sm:items-center sm:justify-center"
+          role="presentation"
+          onMouseDown={() => setIsOpen(false)}
+        >
     <form
       ref={formRef}
       action={formAction}
-      className="rounded-md border border-slate-200 bg-white"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-version-title"
+      className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-md border border-slate-200 bg-white shadow-xl"
+      onMouseDown={(event) => event.stopPropagation()}
     >
-      <div className="border-b border-slate-200 p-4">
-        <h2 className="text-sm font-semibold text-slate-950">Add Version</h2>
+      <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
+        <div>
+        <h2 id="add-version-title" className="text-lg font-semibold text-slate-950">
+          Add Version
+        </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Create a model version and optionally attach one factual change record.
+          Create the next version for a project. Add change details only when
+          they help explain the report later.
         </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsOpen(false)}
+          className="inline-flex size-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
+          aria-label="Close add version dialog"
+        >
+          <X className="size-4" strokeWidth={1.8} aria-hidden="true" />
+        </button>
+      </div>
         {state.message ? (
           <p
             className={[
@@ -92,7 +129,6 @@ export function AddVersionForm({
             {state.message}
           </p>
         ) : null}
-      </div>
       <div className="grid gap-4 p-4 md:grid-cols-3">
         <label className="grid gap-2 text-sm">
           <span className="font-semibold text-slate-950">Model</span>
@@ -244,5 +280,8 @@ export function AddVersionForm({
         </button>
       </div>
     </form>
+        </div>
+      ) : null}
+    </>
   );
 }

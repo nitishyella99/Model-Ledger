@@ -35,3 +35,7 @@ supabase/.temp
 
 # Vercel local project link
 .vercel
+workers/dist
+workers/__pycache__
+.venv-modal/
+.deployment-api-smoke.json

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import { selectRerunTests } from "@/lib/evaluation/rerun-selection";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -70,6 +71,7 @@ type RunEvaluationFormProps = Readonly<{
   ) => Promise<TestCaseActionState>;
   initialModelId?: string;
   initialVersionId?: string;
+  initialTestKeys?: string[];
 }>;
 
 const template =
@@ -148,6 +150,7 @@ export function RunEvaluationForm({
   importCsvAction,
   initialModelId,
   initialVersionId,
+  initialTestKeys = [],
 }: RunEvaluationFormProps) {
   const router = useRouter();
   const defaultModelId = initialModelId || models[0]?.value || "";
@@ -171,10 +174,11 @@ export function RunEvaluationForm({
   const [modelVersionId, setModelVersionId] = useState(defaultVersionId);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(selectRerunTests(testCases, defaultModelId, defaultVersionId, initialTestKeys)));
   const [csv, setCsv] = useState("");
 
   useEffect(() => {
+    if(runState.status === "success" && runState.queuedProjectId)router.push(`/projects/${runState.queuedProjectId}`);
     if (runState.status === "success" && runState.createdEvaluationId) {
       router.push(`/reports/${runState.createdEvaluationId}`);
     }
@@ -200,6 +204,7 @@ export function RunEvaluationForm({
   const projectTestsMap = new Map<string, TestCaseOption>();
   for (const testCase of testCases) {
     if (testCase.modelId !== modelId) continue;
+    if(testCase.modelVersionId && testCase.modelVersionId!==modelVersionId)continue;
     const key = testCase.stableKey || testCase.id;
     const existing = projectTestsMap.get(key);
     if (!existing) {
@@ -224,6 +229,15 @@ export function RunEvaluationForm({
   const selectedTests = modelTests.filter((testCase) => selectedIds.has(testCase.id));
   const csvPreview = useMemo(() => parseCsvPreview(csv), [csv]);
   const canRun = Boolean(modelId && modelVersionId && configuration && selectedIds.size > 0);
+  const disabledReason = !modelId
+    ? "Select a project to continue."
+    : !modelVersionId
+    ? "Select a version to continue."
+    : !configuration
+    ? "Configure model version before running an evaluation."
+    : selectedIds.size === 0
+    ? "Select at least 1 test case to run evaluation."
+    : null;
   const configurationHref = modelVersionId ? `/versions/${modelVersionId}` : "/versions";
 
   function toggleTest(id: string) {
@@ -242,6 +256,7 @@ export function RunEvaluationForm({
 
   return (
     <div className="space-y-4">
+      {initialTestKeys.length > 0 && <p className="rounded-md border border-stone-200 bg-white p-4 text-sm">Affected-case rerun: matching cases are preselected for this version. Review their input, expected output, evaluator, and threshold against the source report before running. If a case is missing or changed, restore its recorded definition first.</p>}
       <Step number={1} title="Select Version">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-2 text-sm">
@@ -533,8 +548,22 @@ export function RunEvaluationForm({
             Execution in progress: creating run, calling provider, evaluating outputs, and saving telemetry.
           </div>
         ) : null}
+        {!canRun && !isRunning && disabledReason ? (
+          <div className="mb-3 flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            <span>{disabledReason}</span>
+            {!configuration && modelVersionId ? (
+              <Link
+                href={configurationHref}
+                className="ml-2 font-semibold underline text-amber-950 hover:text-stone-950 shrink-0"
+              >
+                Configure Version
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
         <button
           disabled={!canRun || isRunning}
+          title={!canRun && disabledReason ? disabledReason : undefined}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-stone-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
         >
           {isRunning ? (

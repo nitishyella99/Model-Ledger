@@ -1,3 +1,4 @@
+import { requireOwnedModel } from "@/lib/data/models";
 import "server-only";
 
 import type { EvaluationDataset, EvaluationFact } from "@/lib/evaluation/types";
@@ -53,6 +54,7 @@ function getHistoricalFactsForReport(
     .filter(
       (fact) =>
         fact.evaluationId !== currentEvaluationId &&
+        new Date(fact.evaluatedAt).getTime() <= new Date(report.evaluation.evaluated_at).getTime() &&
         currentTestKeys.has(fact.testKey),
     )
     .sort(compareFactsNewestFirst)
@@ -103,6 +105,7 @@ export async function backfillReportMemories(input: {
   report: RunReportData;
   limit?: number;
 }): Promise<RetainMemoryResult[]> {
+  await requireOwnedModel(input.modelId);
   const client = getHindsightClient();
 
   if (!client) {

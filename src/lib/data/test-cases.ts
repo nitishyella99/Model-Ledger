@@ -26,7 +26,7 @@ export {
 export async function getTestCasesByModelId(
   modelId: string,
 ): Promise<TestCaseRow[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("test_cases")
     .select("*")
@@ -48,7 +48,7 @@ export async function getTestCasesByIds(
     return [];
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("test_cases")
     .select("*")
@@ -66,7 +66,7 @@ export async function getTestCasesByIds(
 export async function createTestCase(
   input: CreateTestCaseInput,
 ): Promise<TestCaseRow> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("test_cases")
     .insert(input)
@@ -87,7 +87,7 @@ export async function upsertTestCases(
     return [];
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("test_cases")
     .upsert(inputs, { onConflict: "model_id,model_version_id,stable_key" })
@@ -123,7 +123,7 @@ export async function updateTestCase(
   testCaseId: string,
   input: UpdateTestCaseInput,
 ): Promise<TestCaseRow> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("test_cases")
     .update(input)
